@@ -18,19 +18,17 @@ import java.util.ArrayList;
 import java.util.Date;
 
 public class WebServer implements Runnable{
-	Socket client;
+	Socket client = null;
+	
+	public WebServer(Socket client){
+		this.client = client;
+	}
 
 	public void run(){
 		try{
-			int port = 80;
-
-			ServerSocket server = new ServerSocket(port);
 			String inputLine;
 			int i = 0;
 			while (true) {
-				System.out.println("Warte auf Anfrage auf Port: "
-						+ server.getLocalPort());
-				Socket client = server.accept();
 				OutputStream os = client.getOutputStream();
 				InputStream is = client.getInputStream();
 				BufferedReader br = new BufferedReader(
