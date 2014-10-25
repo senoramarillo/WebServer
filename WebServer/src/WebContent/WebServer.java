@@ -19,6 +19,12 @@ import java.util.Date;
 
 public class WebServer implements Runnable{
 	Socket client = null;
+	String getHeader = null;
+	BufferedReader br;
+	InputStream is;
+	OutputStream os;
+	PrintWriter out;
+	BufferedWriter myWriter;
 	
 	public WebServer(Socket client){
 		this.client = client;
@@ -26,36 +32,30 @@ public class WebServer implements Runnable{
 
 	public void run(){
 		try{
-			String inputLine;
 			int i = 0;
 			while (true) {
-				OutputStream os = client.getOutputStream();
-				InputStream is = client.getInputStream();
-				BufferedReader br = new BufferedReader(
-						new InputStreamReader(is));
-//				BufferedWriter myWriter = new BufferedWriter(new FileWriter(
-//						"log.txt", true));
+				is = client.getInputStream();
+			    os = client.getOutputStream();
+				br = new BufferedReader(new InputStreamReader(is));
+				out = new PrintWriter(os);
 				String request = br.readLine();
-//				PrintWriter out = new PrintWriter(os);
+				System.out.println("Request: "+request);
 				
-				// Time time = new Time(System.currentTimeMillis());
-				// Date date = new Date(System.currentTimeMillis());
-				// String browser = " ";
-				// myWriter.write(date.toString() + " " + time.toString() +
-				// request);
-				// String insert = " ";
-				//
-				// do {
-				// insert = br.readLine(); // lesen der Zeilen im Buffer
-				// if (insert.startsWith("User-Agent")) {
-				// browser = insert.substring(12);
-				// myWriter.write("\n " + insert);
-				// System.out.println(browser);
-				// }
-				// } while (!insert.equals("") && (!(insert == null)));
-				// myWriter.write("\n");
-				// myWriter.close();
-
+				String httpGet[] = request.split(" ");
+				System.out.println("httpGet: "+httpGet[1]);
+				if (httpGet[1].contains("header=show")){
+					getHeader = request+"<br><br>";
+				}else{
+					getHeader = "";
+				}
+				//out.println("HTTP/1.0 200 Ok\n"+ "Content-type: "+getHeader);
+				out.print("<HTML><HEAD><TITLE></TITLE></HEAD>"
+						+ "<BODY><H2>Information</H2>" + "<P>Request: <PRE>");
+				for (int k = 0; k < i - 1; k++)
+					out.println(httpGet[k]);
+				out.print("</PRE></BODY></HTML>");
+				out.flush();
+				
 				request = request.split("GET /")[1].split(" HTTP")[0];
 				System.out.println("\"" + request + "\"");
 				File file = new File(request);
@@ -65,53 +65,30 @@ public class WebServer implements Runnable{
 					URLConnection url = file.toURI().toURL().openConnection();
 					client.getOutputStream().write("HTTP/1.0 200 OK\n".getBytes());
 					System.out.write("HTTP/1.0 200 OK\n".getBytes());
-					client.getOutputStream().write(("Content-type: " + url.getContentType() + "\n")
-							.getBytes());
-					System.out
-							.write(("Content-type: " + url.getContentType() + "\n")
-									.getBytes());
-					client.getOutputStream().write(("Content-length: " + url.getContentLength() + "\n\n")
-							.getBytes());
-					System.out.write(("Content-length: "
-							+ url.getContentLength() + "\n\n").getBytes());
+					client.getOutputStream().write(("Content-type: " + url.getContentType() + "\n").getBytes());
+					System.out.write(("Content-type: " + url.getContentType() + "\n").getBytes());
+					client.getOutputStream().write(("Content-length: " + url.getContentLength() + "\n\n").getBytes());
+					System.out.write(("Content-length: "+ url.getContentLength() + "\n\n").getBytes());
 					FileInputStream isr = new FileInputStream(file);
 					while (isr.available() > 0) {
 						os.write(isr.read());
 						os.flush();
 					}
-					/*
-					 * if (request.equals("/")) request =
-					 * "/testpage/index.html";
-					 * System.out.println("Es wurde die Datei " + request +
-					 * " angefragt.");
-					 */
-
-					// String htdocs = new String("http://localhost:30000/");
-					// String temp;
-					// String Path;
-					// boolean quit = false;
-					// temp = (new File(htdocs + request)).getCanonicalPath();
-					// String Path = (new File(temp)).getCanonicalPath();
-					// Bad request
 					if (request.contains("..")) {
 						System.out.println("Kein richtiger Pfad angegeben - Bad Request");
 						final String badrequest = "<html><head><title>400</title></head><body><h1>400 - Bad Request</h1></body></html>";
-						final String data = fault(badrequest.length(),
-								"400 Bad Request");
+						final String data = fault(badrequest.length(),"400 Bad Request");
 
 						client.getOutputStream().write(data.getBytes());
 						client.getOutputStream().write(badrequest.getBytes());
-
 					}
 				}
 				// Ausgabe der Fehlermeldung 404
 				else {
 					if (!(file.exists())) {
-						System.out
-								.println("Datei wurde nicht gefunden, schreibe 404 Meldung");
+						System.out.println("Datei wurde nicht gefunden, schreibe 404 Meldung");
 						final String content = "<html><head><title>404</title></head><body><h1>404 - Not found</h1></body></html>";
-						final String data = fault(content.length(),
-								"404 Not Found");
+						final String data = fault(content.length(),"404 Not Found");
 						client.getOutputStream().write(data.getBytes());
 						client.getOutputStream().write(content.getBytes());
 					}
@@ -121,21 +98,7 @@ public class WebServer implements Runnable{
 			}
 
 		} catch (IOException e) {
-			System.out
-					.println("Datei wurde nicht gefunden, schreibe 404 Meldung");
-			final String content = "<html><head><title>404</title></head><body><h1>404 - Not found</h1></body></html>";
-			final String data = fault(content.length(), "404 Not Found");
-			try {
-				client.getOutputStream().write(data.getBytes());
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-			try {
-				client.getOutputStream().write(content.getBytes());
-			} catch (IOException e1) {
-				e1.printStackTrace();
-			}
-			System.out.println("Exception" + e);
+			e.printStackTrace();
 		}
 	}
 
@@ -143,20 +106,5 @@ public class WebServer implements Runnable{
 		return "HTTP/1.1 " + httpState + "\n" + "Content-Length: "
 				+ stringLength + "\n" + "Content-Type: text/html\n"
 				+ "Connection: close\n\n";
-	}
-
-	public static void displayHeader(PrintWriter out){
-		int i = 0;
-		String line[] = new String[10];
-//		while (!(line[i++] = request).equals(""));
-		out.println("HTTP\1.0 200 OK");
-		out.println("Content-type: text/html");
-		out.println("");
-		out.print("<HTML><HEAD><TITLE></TITLE></HEAD>"
-				+ "<BODY><H2>Information</H2>" + "<P>Request: <PRE>");
-		for (int k = 0; k < i - 1; k++)
-			out.println(line[k]);
-		out.print("</PRE></BODY></HTML>");
-		out.flush();
 	}
 }
